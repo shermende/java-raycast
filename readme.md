@@ -1,5 +1,5 @@
 ### Description
-Java raycast example
+Java raycast basic 3D Engine
 ### References
 * [Java example](https://www.instructables.com/id/Making-a-Basic-3D-Engine-in-Java/)
 * [C++ example](https://github.com/OneLoneCoder/CommandLineFPS)
