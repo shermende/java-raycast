@@ -73,9 +73,9 @@ public class RayCast implements KeyListener, MouseMotionListener {
         image = new BufferedImage(640, 480, BufferedImage.TYPE_INT_RGB);
         pixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
 
-        this.playerX = 2;
-        this.playerY = 13;
-        this.playerDirection = Math.PI;
+        this.playerX = 3.5;
+        this.playerY = 4.5;
+        this.playerDirection = Math.PI / 2;
 
         long lastTime = System.nanoTime();
         final double ns = 1000000000.0 / 60.0;//60 times per second
