@@ -2,33 +2,44 @@ package dev.shermende.raycast;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionListener;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
+import java.util.Optional;
 
 /**
  * Created by abdys on 20/7/20.
  * n.u.abdysamat@gmail.com,developer@shermende.dev
  */
-public class RayCast implements KeyListener, MouseMotionListener, MouseListener {
+public class RayCast implements KeyListener, MouseMotionListener {
 
     private final String title = "";
 
     private final int screenWidth = 640;
     private final int screenHeight = 480;
-    private BufferedImage image;
-    private int[] pixels;
+
     private int mouseX;
+
+    private final JFrame frame;
+    private final int[] pixels;
+    private final BufferedImage image;
+
     private double playerX;
     private double playerY;
-    private JFrame frame;
     private double playerDirection;
-    private final double fFOV = Math.PI / 4;
-    private final double playerDirectionSpeed = 1.5;
-    private final double playerMovementSpeed = 0.001;
+    private boolean playerForward;
+    private boolean playerBack;
+    private boolean playerLeft;
+    private boolean playerRight;
+    private final double playerFieldOfView = Math.PI / 4;
+    private final double playerDirectionSpeed = 0.5;
+    private final double playerMovementSpeed = 0.1;
 
-    public static int[][] map =
+    protected static final int[][] MAP =
         {
             {1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2},
             {1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 2},
@@ -56,14 +67,15 @@ public class RayCast implements KeyListener, MouseMotionListener, MouseListener 
         frame.setTitle(title);
         frame.addMouseMotionListener(this);
         frame.addKeyListener(this);
-        frame.addMouseListener(this);
         frame.requestFocus();
+        frame.createBufferStrategy(3);
 
         image = new BufferedImage(640, 480, BufferedImage.TYPE_INT_RGB);
         pixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
 
-        this.playerX = 3;
-        this.playerY = 11;
+        this.playerX = 2;
+        this.playerY = 13;
+        this.playerDirection = Math.PI;
 
         long lastTime = System.nanoTime();
         final double ns = 1000000000.0 / 60.0;//60 times per second
@@ -72,93 +84,90 @@ public class RayCast implements KeyListener, MouseMotionListener, MouseListener 
             long now = System.nanoTime();
             delta = delta + ((now - lastTime) / ns);
             lastTime = now;
-            while (delta >= 1)//Make sure update is only happening 60 times a second
-            {
-                //handles all of the logic restricted time
+            while (delta >= 1) {
                 imageRender();
+                movement();
                 delta--;
             }
-//            System.out.println(playerX + ":" + playerY);
             render();
         }
 
     }
 
-    public int color() {
-        return 0;
+    private void movement() {
+        if (playerForward) {
+            double nextX = Math.sin(this.playerDirection) * playerMovementSpeed;
+            double nextY = Math.cos(this.playerDirection) * playerMovementSpeed;
+            if (MAP[(int) (playerX + nextX)][(int) (playerY + nextY)] == 0) {
+                this.playerX += nextX;
+                this.playerY += nextY;
+            }
+        }
+        if (playerBack) {
+            double nextX = Math.sin(this.playerDirection) * playerMovementSpeed;
+            double nextY = Math.cos(this.playerDirection) * playerMovementSpeed;
+            if (MAP[(int) (playerX - nextX)][(int) (playerY - nextY)] == 0) {
+                this.playerX -= nextX;
+                this.playerY -= nextY;
+            }
+        }
     }
 
     private void imageRender() {
         for (int n = 0; n < pixels.length / 2; n++)
-            if (pixels[n] != Color.DARK_GRAY.getRGB())
-                pixels[n] = Color.DARK_GRAY.getRGB();
+            if (pixels[n] != Color.DARK_GRAY.getRGB()) pixels[n] = Color.DARK_GRAY.getRGB();
         for (int i = pixels.length / 2; i < pixels.length; i++)
-            if (pixels[i] != Color.gray.getRGB())
-                pixels[i] = Color.gray.getRGB();
+            if (pixels[i] != Color.gray.getRGB()) pixels[i] = Color.gray.getRGB();
 
         for (int x = 0; x < screenWidth; x++) {
-            double fRayAngle = (playerDirection - fFOV / 4.0f) + ((float) x / (float) screenWidth) * fFOV;
+            double fRayAngle = (playerDirection - playerFieldOfView / 2.0f) + ((float) x / (float) screenWidth) * playerFieldOfView;
+            Color color = null;
+            double step = 0.01;
             double distance = 0.0;
-            int nTestX = 0;
-            int nTestY = 0;
-            double step = 0.5;
             double fEyeX = Math.sin(fRayAngle);
             double fEyeY = Math.cos(fRayAngle);
             boolean hit = false;
             while (!hit) {
                 distance += step;
-                nTestX = (int) (playerX + fEyeX * distance);
-                nTestY = (int) (playerY + fEyeY * distance);
+                int nTestX = (int) (playerX + fEyeX * distance);
+                int nTestY = (int) (playerY + fEyeY * distance);
                 if (nTestX < 0 || nTestX >= 15 || nTestY < 0 || nTestY >= 15) {
-                    hit = true;            // Just set distance to maximum depth
+                    hit = true;
                     distance = 50;
-                } else if (map[nTestX][nTestY] > 0) {
+                    color = shadeColor(color(MAP[nTestX][nTestY]), distance);
+                }
+                if (MAP[nTestX][nTestY] > 0 || distance >= 50) {
                     hit = true;
-                } else if (distance >= 50) {
-                    hit = true;
+                    color = shadeColor(color(MAP[nTestX][nTestY]), distance);
                 }
             }
 
-            int lineHeight;
-            if (distance > 0)
-                lineHeight = Math.abs((int) (screenHeight / distance));
-            else
-                lineHeight = screenHeight;
+            int lineHeight = Optional.of(distance)
+                .filter(var -> var > 0).map(var -> Math.abs((int) (screenHeight / var))).orElse(screenHeight);
 
-            //calculate lowest and highest pixel to fill in current stripe
-            int drawStart = -lineHeight / 2 + screenHeight / 2;
-            if (drawStart < 0)
-                drawStart = 0;
-            int drawEnd = lineHeight / 2 + screenHeight / 2;
-            if (drawEnd >= screenHeight)
-                drawEnd = screenHeight - 1;
+            int drawStart = Optional.of(((-lineHeight / 2) + (screenHeight / 2)))
+                .filter(var -> var > 0).orElse(0);
+            int drawEnd = Optional.of(((lineHeight / 2) + (screenHeight / 2)))
+                .filter(var -> var <= screenHeight).orElse(screenHeight - 1);
 
-            for (int y = drawStart; y < drawEnd; y++) {
-                pixels[x + y * screenWidth] = brigthnessColor(color(map[nTestX][nTestY]), distance).getRGB();
-            }
+            for (int y = drawStart; y < drawEnd; y++) pixels[x + y * screenWidth] = color.getRGB();
+
         }
     }
 
     public Color color(int x) {
-        if (x == 4)
-            return new Color(150, 0, 0);
-        if (x == 3)
-            return new Color(0, 150, 0);
-        if (x == 2)
-            return new Color(0, 0, 150);
+        if (x == 4) return new Color(150, 0, 0);
+        if (x == 3) return new Color(0, 150, 0);
+        if (x == 2) return new Color(0, 0, 150);
         return new Color(150, 0, 150);
     }
 
-    public Color brigthnessColor(Color color, double distance) {
-        if (distance <= 2)
-            return darken(color, 0.1);
-        if (distance <= 3)
-            return darken(color, 0.2);
-        if (distance <= 4)
-            return darken(color, 0.3);
-        if (distance <= 5)
-            return darken(color, 0.4);
-        return darken(color, 0.5);
+    public Color shadeColor(Color color, double distance) {
+        if (distance <= 1) return darken(color, 0.1);
+        if (distance <= 2) return darken(color, 0.15);
+        if (distance <= 3) return darken(color, 0.2);
+        if (distance <= 4) return darken(color, 0.25);
+        return darken(color, 0.3);
     }
 
     public Color darken(Color color, double fraction) {
@@ -170,13 +179,8 @@ public class RayCast implements KeyListener, MouseMotionListener, MouseListener 
     }
 
     public void render() {
-        BufferStrategy bs = frame.getBufferStrategy();
-        if (bs == null) {
-            frame.createBufferStrategy(3);
-            return;
-        }
-        Graphics g = bs.getDrawGraphics();
-
+        final BufferStrategy bs = frame.getBufferStrategy();
+        final Graphics g = bs.getDrawGraphics();
         g.drawImage(image, 0, 0, image.getWidth(), image.getHeight(), null);
         bs.show();
     }
@@ -185,47 +189,20 @@ public class RayCast implements KeyListener, MouseMotionListener, MouseListener 
     public void keyPressed(
         KeyEvent keyEvent
     ) {
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_W)) {
-            double nextX = Math.sin(this.playerDirection);
-            double nextY = Math.cos(this.playerDirection);
-            if (map[(int) (playerX + nextX)][(int) (playerY + nextY)] == 0) {
-                this.playerX += nextX;
-                this.playerY += nextY;
-            }
-        }
-
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_S)) {
-            double nextX = Math.sin(this.playerDirection);
-            double nextY = Math.cos(this.playerDirection);
-            if (map[(int) (playerX - nextX)][(int) (playerY - nextY)] == 0) {
-                this.playerX -= nextX;
-                this.playerY -= nextY;
-            }
-        }
-
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_A)) {
-
-        }
-
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_D)) {
-
-        }
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_W)) this.playerForward = true;
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_S)) this.playerBack = true;
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_A)) this.playerLeft = true;
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_D)) this.playerRight = true;
     }
 
     @Override
     public void keyReleased(
         KeyEvent keyEvent
     ) {
-    }
-
-    @Override
-    public void mouseDragged(
-        MouseEvent mouseEvent
-    ) {
-        final int oldMouseX = this.mouseX;
-        this.mouseX = mouseEvent.getX();
-        if (oldMouseX > mouseX) this.playerDirection -= 0.05 * playerDirectionSpeed;// left
-        else this.playerDirection += 0.05 * playerDirectionSpeed;// right
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_W)) this.playerForward = false;
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_S)) this.playerBack = false;
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_A)) this.playerLeft = false;
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_D)) this.playerRight = false;
     }
 
     @Override
@@ -239,10 +216,17 @@ public class RayCast implements KeyListener, MouseMotionListener, MouseListener 
     }
 
     @Override
+    public void mouseDragged(
+        MouseEvent mouseEvent
+    ) {
+        // no action
+    }
+
+    @Override
     public void keyTyped(
         KeyEvent keyEvent
     ) {
-
+        // no action
     }
 
     public static void main(
@@ -251,28 +235,4 @@ public class RayCast implements KeyListener, MouseMotionListener, MouseListener 
         new RayCast();
     }
 
-    @Override
-    public void mouseClicked(MouseEvent mouseEvent) {
-        System.out.println(mouseEvent.getButton());
-    }
-
-    @Override
-    public void mousePressed(MouseEvent mouseEvent) {
-
-    }
-
-    @Override
-    public void mouseReleased(MouseEvent mouseEvent) {
-
-    }
-
-    @Override
-    public void mouseEntered(MouseEvent mouseEvent) {
-
-    }
-
-    @Override
-    public void mouseExited(MouseEvent mouseEvent) {
-
-    }
 }
