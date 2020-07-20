@@ -1,4 +1,4 @@
-package dev.shermende.raycast;
+package dev.shermende.game;
 
 /**
  * Created by abdys on 18/7/20.

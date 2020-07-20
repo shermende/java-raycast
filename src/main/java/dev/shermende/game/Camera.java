@@ -1,4 +1,4 @@
-package dev.shermende.raycast;
+package dev.shermende.game;
 
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
