@@ -18,20 +18,15 @@ public class RayCast implements KeyListener, MouseMotionListener, MouseListener 
     private final int screenWidth = 640;
     private final int screenHeight = 480;
     private BufferedImage image;
-    public int[] pixels;
+    private int[] pixels;
     private int mouseX;
-    private int mouseY;
-    private int playerX;
-    private int playerY;
+    private double playerX;
+    private double playerY;
+    private JFrame frame;
     private double playerDirection;
-    private final double fFOV = Math.PI / 3;
+    private final double fFOV = Math.PI / 4;
     private final double playerDirectionSpeed = 1.5;
     private final double playerMovementSpeed = 0.001;
-    private boolean playerForward;
-    private boolean playerBack;
-    private boolean playerLeft;
-    private boolean playerRight;
-    private JFrame frame;
 
     public static int[][] map =
         {
@@ -81,9 +76,9 @@ public class RayCast implements KeyListener, MouseMotionListener, MouseListener 
             {
                 //handles all of the logic restricted time
                 imageRender();
-                movement();
                 delta--;
             }
+//            System.out.println(playerX + ":" + playerY);
             render();
         }
 
@@ -129,6 +124,7 @@ public class RayCast implements KeyListener, MouseMotionListener, MouseListener 
                 lineHeight = Math.abs((int) (screenHeight / distance));
             else
                 lineHeight = screenHeight;
+
             //calculate lowest and highest pixel to fill in current stripe
             int drawStart = -lineHeight / 2 + screenHeight / 2;
             if (drawStart < 0)
@@ -138,32 +134,40 @@ public class RayCast implements KeyListener, MouseMotionListener, MouseListener 
                 drawEnd = screenHeight - 1;
 
             for (int y = drawStart; y < drawEnd; y++) {
-                pixels[x + y * screenWidth] = color(map[nTestX][nTestY]);
+                pixels[x + y * screenWidth] = brigthnessColor(color(map[nTestX][nTestY]), distance).getRGB();
             }
         }
     }
 
-    public int color(int x) {
+    public Color color(int x) {
         if (x == 4)
-            return new Color(150, 0, 0).getRGB();
+            return new Color(150, 0, 0);
         if (x == 3)
-            return new Color(0, 150, 0).getRGB();
+            return new Color(0, 150, 0);
         if (x == 2)
-            return new Color(0, 0, 150).getRGB();
-        return new Color(150, 0, 150).getRGB();
+            return new Color(0, 0, 150);
+        return new Color(150, 0, 150);
     }
 
-//    public int brigthnessColor(int x, double distance) {
-//        if (distance >= 2)
-//            return x & new Color(150, 150, 150).getRGB();
-//        if (distance >= 5)
-//            return x & new Color(130, 130, 130).getRGB();
-//        if (distance >= 10)
-//            return x & new Color(110, 110, 110).getRGB();
-//        if (distance >= 15)
-//            return x & new Color(80, 80, 80).getRGB();
-//        return x & new Color(50, 50, 50).getRGB();
-//    }
+    public Color brigthnessColor(Color color, double distance) {
+        if (distance <= 2)
+            return darken(color, 0.1);
+        if (distance <= 3)
+            return darken(color, 0.2);
+        if (distance <= 4)
+            return darken(color, 0.3);
+        if (distance <= 5)
+            return darken(color, 0.4);
+        return darken(color, 0.5);
+    }
+
+    public Color darken(Color color, double fraction) {
+        int red = (int) Math.round(Math.max(0, color.getRed() - 255 * fraction));
+        int green = (int) Math.round(Math.max(0, color.getGreen() - 255 * fraction));
+        int blue = (int) Math.round(Math.max(0, color.getBlue() - 255 * fraction));
+        int alpha = color.getAlpha();
+        return new Color(red, green, blue, alpha);
+    }
 
     public void render() {
         BufferStrategy bs = frame.getBufferStrategy();
@@ -175,100 +179,62 @@ public class RayCast implements KeyListener, MouseMotionListener, MouseListener 
 
         g.drawImage(image, 0, 0, image.getWidth(), image.getHeight(), null);
         bs.show();
-//        final Optional<BufferStrategy> optional = Optional.ofNullable(canvas.getBufferStrategy());
-//        if (!optional.isPresent()) {
-//            canvas.createBufferStrategy(3);
-//            return;
-//        }
-//
-//        final BufferStrategy bs = optional.get();
-//        final Graphics g = bs.getDrawGraphics();
-//        g.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
-//        //Begin
-//
-//        g.setColor(Color.WHITE);
-//        g.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
-//
-//        double fFOV = Math.PI / 3;
-//        g.setColor(Color.RED);
-//        for (int x = 0; x < screenWidth; x++) {
-//            double fRayAngle = (playerDirection - fFOV / 4.0f) + ((float) x / (float) screenWidth) * fFOV;
-//            double fEyeX = Math.sin(fRayAngle) * 100;
-//            double fEyeY = Math.cos(fRayAngle) * 100;
-//            g.drawLine(playerX, playerY, (playerX + (int) fEyeX), (playerY + (int) fEyeY));
-//        }
-//
-//        //Stop
-//        g.dispose();
-//        bs.show();
-    }
-
-    private void movement() {
-        if (playerForward && playerY > 0) {
-            playerY += 1 * playerMovementSpeed;
-        }
-        if (playerBack && playerY < 16) {
-            playerY -= 1 * playerMovementSpeed;
-        }
-        if (playerLeft && playerX > 0) {
-            playerX += 1 * playerMovementSpeed;
-        }
-        if (playerRight && playerX < 16) {
-            playerX -= 1 * playerMovementSpeed;
-        }
     }
 
     @Override
     public void keyPressed(
         KeyEvent keyEvent
     ) {
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_W))
-            this.playerForward = true;
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_W)) {
+            double nextX = Math.sin(this.playerDirection);
+            double nextY = Math.cos(this.playerDirection);
+            if (map[(int) (playerX + nextX)][(int) (playerY + nextY)] == 0) {
+                this.playerX += nextX;
+                this.playerY += nextY;
+            }
+        }
 
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_S))
-            this.playerBack = true;
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_S)) {
+            double nextX = Math.sin(this.playerDirection);
+            double nextY = Math.cos(this.playerDirection);
+            if (map[(int) (playerX - nextX)][(int) (playerY - nextY)] == 0) {
+                this.playerX -= nextX;
+                this.playerY -= nextY;
+            }
+        }
 
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_A))
-            this.playerLeft = true;
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_A)) {
 
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_D))
-            this.playerRight = true;
+        }
+
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_D)) {
+
+        }
     }
 
     @Override
     public void keyReleased(
         KeyEvent keyEvent
     ) {
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_W))
-            this.playerForward = false;
-
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_S))
-            this.playerBack = false;
-
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_A))
-            this.playerLeft = false;
-
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_D))
-            this.playerRight = false;
     }
 
+    @Override
     public void mouseDragged(
         MouseEvent mouseEvent
     ) {
         final int oldMouseX = this.mouseX;
         this.mouseX = mouseEvent.getX();
-        this.mouseY = mouseEvent.getY();
-        if (oldMouseX < mouseX) this.playerDirection -= 0.05 * playerDirectionSpeed;// left
+        if (oldMouseX > mouseX) this.playerDirection -= 0.05 * playerDirectionSpeed;// left
         else this.playerDirection += 0.05 * playerDirectionSpeed;// right
     }
 
+    @Override
     public void mouseMoved(
         MouseEvent mouseEvent
     ) {
         final int oldMouseX = this.mouseX;
         this.mouseX = mouseEvent.getX();
-        this.mouseY = mouseEvent.getY();
-        if (oldMouseX < mouseX) this.playerDirection -= 0.05 * playerDirectionSpeed;// left
+        if (oldMouseX > mouseX) this.playerDirection -= 0.05 * playerDirectionSpeed;// left
         else this.playerDirection += 0.05 * playerDirectionSpeed;// right
     }
 
