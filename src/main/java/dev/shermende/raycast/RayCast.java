@@ -1,5 +1,8 @@
 package dev.shermende.raycast;
 
+import lombok.Builder;
+import lombok.Data;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyEvent;
@@ -15,29 +18,16 @@ import java.util.Optional;
  * Created by abdys on 20/7/20.
  * n.u.abdysamat@gmail.com,developer@shermende.dev
  */
-public class RayCast implements KeyListener, MouseMotionListener {
+public class RayCast extends JFrame implements KeyListener, MouseMotionListener {
 
-    private final String title = "";
+    private final int screenWidth;
+    private final int screenHeight;
 
-    private final int screenWidth = 640;
-    private final int screenHeight = 480;
+    private final int[] pixels;
+    private final transient BufferedImage image;
+    private final transient Player player;
 
     private int mouseX;
-
-    private final JFrame frame;
-    private final int[] pixels;
-    private final BufferedImage image;
-
-    private double playerX;
-    private double playerY;
-    private double playerDirection;
-    private boolean playerForward;
-    private boolean playerBack;
-    private boolean playerLeft;
-    private boolean playerRight;
-    private final double playerFieldOfView = Math.PI / 4;
-    private final double playerDirectionSpeed = 0.5;
-    private final double playerMovementSpeed = 0.1;
 
     protected static final int[][] MAP =
         {
@@ -59,23 +49,31 @@ public class RayCast implements KeyListener, MouseMotionListener {
         };
 
 
-    public RayCast() {
-        frame = new JFrame();
-        frame.setSize(screenWidth, screenHeight);
-        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        frame.setVisible(true);
-        frame.setTitle(title);
-        frame.addMouseMotionListener(this);
-        frame.addKeyListener(this);
-        frame.requestFocus();
-        frame.createBufferStrategy(3);
+    public RayCast(
+        int screenWidth,
+        int screenHeight
+    ) {
+        setTitle("");
+        setSize(screenWidth, screenHeight);
+        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        setVisible(true);
+        addMouseMotionListener(this);
+        addKeyListener(this);
+        requestFocus();
+        createBufferStrategy(3);
 
-        image = new BufferedImage(640, 480, BufferedImage.TYPE_INT_RGB);
-        pixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
-
-        this.playerX = 3.5;
-        this.playerY = 4.5;
-        this.playerDirection = Math.PI / 2;
+        this.screenHeight = screenHeight;
+        this.screenWidth = screenWidth;
+        this.image = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_RGB);
+        this.pixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
+        this.player = Player.builder()
+            .playerX(3.5)
+            .playerY(4.5)
+            .playerFieldOfView(Math.PI / 4)
+            .playerDirection(Math.PI / 2)
+            .playerDirectionSpeed(0.5)
+            .playerMovementSpeed(0.1)
+            .build();
 
         long lastTime = System.nanoTime();
         final double ns = 1000000000.0 / 60.0;//60 times per second
@@ -95,20 +93,20 @@ public class RayCast implements KeyListener, MouseMotionListener {
     }
 
     private void movement() {
-        if (playerForward) {
-            double nextX = Math.sin(this.playerDirection) * playerMovementSpeed;
-            double nextY = Math.cos(this.playerDirection) * playerMovementSpeed;
-            if (MAP[(int) (playerX + nextX)][(int) (playerY + nextY)] == 0) {
-                this.playerX += nextX;
-                this.playerY += nextY;
+        if (this.player.isPlayerForward()) {
+            double nextX = Math.sin(this.player.getPlayerDirection()) * this.player.getPlayerMovementSpeed();
+            double nextY = Math.cos(this.player.getPlayerDirection()) * this.player.getPlayerMovementSpeed();
+            if (MAP[(int) (this.player.getPlayerX() + nextX)][(int) (this.player.getPlayerY() + nextY)] == 0) {
+                this.player.setPlayerX(this.player.getPlayerX() + nextX);
+                this.player.setPlayerY(this.player.getPlayerY() + nextY);
             }
         }
-        if (playerBack) {
-            double nextX = Math.sin(this.playerDirection) * playerMovementSpeed;
-            double nextY = Math.cos(this.playerDirection) * playerMovementSpeed;
-            if (MAP[(int) (playerX - nextX)][(int) (playerY - nextY)] == 0) {
-                this.playerX -= nextX;
-                this.playerY -= nextY;
+        if (this.player.isPlayerBack()) {
+            double nextX = Math.sin(this.player.getPlayerDirection()) * this.player.getPlayerMovementSpeed();
+            double nextY = Math.cos(this.player.getPlayerDirection()) * this.player.getPlayerMovementSpeed();
+            if (MAP[(int) (this.player.getPlayerX() - nextX)][(int) (this.player.getPlayerY() - nextY)] == 0) {
+                this.player.setPlayerX(this.player.getPlayerX() - nextX);
+                this.player.setPlayerY(this.player.getPlayerY() - nextY);
             }
         }
     }
@@ -120,7 +118,9 @@ public class RayCast implements KeyListener, MouseMotionListener {
             if (pixels[i] != Color.gray.getRGB()) pixels[i] = Color.gray.getRGB();
 
         for (int x = 0; x < screenWidth; x++) {
-            double fRayAngle = (playerDirection - playerFieldOfView / 2.0f) + ((float) x / (float) screenWidth) * playerFieldOfView;
+            double fRayAngle =
+                (this.player.getPlayerDirection() - this.player.getPlayerFieldOfView() / 2.0f)
+                    + ((float) x / (float) screenWidth) * this.player.getPlayerFieldOfView();
             Color color = null;
             double step = 0.01;
             double distance = 0.0;
@@ -129,8 +129,8 @@ public class RayCast implements KeyListener, MouseMotionListener {
             boolean hit = false;
             while (!hit) {
                 distance += step;
-                int nTestX = (int) (playerX + fEyeX * distance);
-                int nTestY = (int) (playerY + fEyeY * distance);
+                int nTestX = (int) (this.player.getPlayerX() + fEyeX * distance);
+                int nTestY = (int) (this.player.getPlayerY() + fEyeY * distance);
                 if (nTestX < 0 || nTestX >= 15 || nTestY < 0 || nTestY >= 15) {
                     hit = true;
                     distance = 50;
@@ -179,7 +179,7 @@ public class RayCast implements KeyListener, MouseMotionListener {
     }
 
     public void render() {
-        final BufferStrategy bs = frame.getBufferStrategy();
+        final BufferStrategy bs = getBufferStrategy();
         final Graphics g = bs.getDrawGraphics();
         g.drawImage(image, 0, 0, image.getWidth(), image.getHeight(), null);
         bs.show();
@@ -189,20 +189,16 @@ public class RayCast implements KeyListener, MouseMotionListener {
     public void keyPressed(
         KeyEvent keyEvent
     ) {
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_W)) this.playerForward = true;
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_S)) this.playerBack = true;
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_A)) this.playerLeft = true;
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_D)) this.playerRight = true;
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_W)) this.player.setPlayerForward(true);
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_S)) this.player.setPlayerBack(true);
     }
 
     @Override
     public void keyReleased(
         KeyEvent keyEvent
     ) {
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_W)) this.playerForward = false;
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_S)) this.playerBack = false;
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_A)) this.playerLeft = false;
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_D)) this.playerRight = false;
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_W)) this.player.setPlayerForward(false);
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_S)) this.player.setPlayerBack(false);
     }
 
     @Override
@@ -211,8 +207,10 @@ public class RayCast implements KeyListener, MouseMotionListener {
     ) {
         final int oldMouseX = this.mouseX;
         this.mouseX = mouseEvent.getX();
-        if (oldMouseX > mouseX) this.playerDirection -= 0.05 * playerDirectionSpeed;// left
-        else this.playerDirection += 0.05 * playerDirectionSpeed;// right
+        if (oldMouseX > mouseX)
+            this.player.setPlayerDirection(this.player.getPlayerDirection() - 0.05 * this.player.getPlayerDirectionSpeed());
+        else
+            this.player.setPlayerDirection(this.player.getPlayerDirection() + 0.05 * this.player.getPlayerDirectionSpeed());
     }
 
     @Override
@@ -229,10 +227,27 @@ public class RayCast implements KeyListener, MouseMotionListener {
         // no action
     }
 
+    @Data
+    @Builder
+    public static class Player {
+        private double playerX;
+        private double playerY;
+        private double playerMovementSpeed;
+
+        private double playerDirection;
+        private double playerDirectionSpeed;
+        private double playerFieldOfView;
+
+        private boolean playerForward;
+        private boolean playerBack;
+        private boolean playerLeft;
+        private boolean playerRight;
+    }
+
     public static void main(
         String... args
     ) {
-        new RayCast();
+        new RayCast(640, 480);
     }
 
 }
