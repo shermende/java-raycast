@@ -2,6 +2,7 @@ package dev.shermende.raycast;
 
 import lombok.Builder;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.swing.*;
 import java.awt.*;
@@ -18,6 +19,7 @@ import java.util.Optional;
  * Created by abdys on 20/7/20.
  * n.u.abdysamat@gmail.com,developer@shermende.dev
  */
+@Slf4j
 public class RayCast extends JFrame implements KeyListener, MouseMotionListener {
 
     private final int screenWidth;
@@ -25,7 +27,7 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
 
     private final int[] pixels;
     private final transient BufferedImage image;
-    private final transient Player player;
+    private final transient Camera player;
 
     private int mouseX;
 
@@ -66,17 +68,17 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
         this.screenWidth = screenWidth;
         this.image = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_RGB);
         this.pixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
-        this.player = Player.builder()
-            .playerX(3.5)
-            .playerY(4.5)
-            .playerFieldOfView(Math.PI / 4)
-            .playerDirection(Math.PI / 2)
-            .playerDirectionSpeed(0.5)
-            .playerMovementSpeed(0.1)
+        this.player = Camera.builder()
+            .positionX(4)
+            .positionY(4.5)
+            .movementSpeed(0.1)
+            .angleOfRotation(Math.PI / 2)
+            .angleOfRotationSpeed(0.5)
+            .fieldOfView(Math.PI / 4)
             .build();
 
         long lastTime = System.nanoTime();
-        final double ns = 1000000000.0 / 60.0;//60 times per second
+        final double ns = 1000000000.0 / 60;//60 times per second
         double delta = 0;
         while (true) {
             long now = System.nanoTime();
@@ -94,33 +96,33 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
 
     private void movement() {
         if (this.player.isPlayerForward()) {
-            double nextX = Math.sin(this.player.getPlayerDirection()) * this.player.getPlayerMovementSpeed();
-            double nextY = Math.cos(this.player.getPlayerDirection()) * this.player.getPlayerMovementSpeed();
-            if (MAP[(int) (this.player.getPlayerX() + nextX)][(int) (this.player.getPlayerY() + nextY)] == 0) {
-                this.player.setPlayerX(this.player.getPlayerX() + nextX);
-                this.player.setPlayerY(this.player.getPlayerY() + nextY);
+            double nextX = Math.sin(this.player.getAngleOfRotation()) * this.player.getMovementSpeed();
+            double nextY = Math.cos(this.player.getAngleOfRotation()) * this.player.getMovementSpeed();
+            if (MAP[(int) (this.player.getPositionX() + nextX)][(int) (this.player.getPositionY() + nextY)] == 0) {
+                this.player.setPositionX(this.player.getPositionX() + nextX);
+                this.player.setPositionY(this.player.getPositionY() + nextY);
             }
         }
         if (this.player.isPlayerBack()) {
-            double nextX = Math.sin(this.player.getPlayerDirection()) * this.player.getPlayerMovementSpeed();
-            double nextY = Math.cos(this.player.getPlayerDirection()) * this.player.getPlayerMovementSpeed();
-            if (MAP[(int) (this.player.getPlayerX() - nextX)][(int) (this.player.getPlayerY() - nextY)] == 0) {
-                this.player.setPlayerX(this.player.getPlayerX() - nextX);
-                this.player.setPlayerY(this.player.getPlayerY() - nextY);
+            double nextX = Math.sin(this.player.getAngleOfRotation()) * this.player.getMovementSpeed();
+            double nextY = Math.cos(this.player.getAngleOfRotation()) * this.player.getMovementSpeed();
+            if (MAP[(int) (this.player.getPositionX() - nextX)][(int) (this.player.getPositionY() - nextY)] == 0) {
+                this.player.setPositionX(this.player.getPositionX() - nextX);
+                this.player.setPositionY(this.player.getPositionY() - nextY);
             }
         }
     }
 
     private void imageRender() {
-        for (int n = 0; n < pixels.length / 2; n++)
-            if (pixels[n] != Color.DARK_GRAY.getRGB()) pixels[n] = Color.DARK_GRAY.getRGB();
+        for (int i = 0; i < pixels.length / 2; i++)
+            if (pixels[i] != Color.DARK_GRAY.getRGB()) pixels[i] = Color.DARK_GRAY.getRGB();
         for (int i = pixels.length / 2; i < pixels.length; i++)
             if (pixels[i] != Color.gray.getRGB()) pixels[i] = Color.gray.getRGB();
 
         for (int x = 0; x < screenWidth; x++) {
             double fRayAngle =
-                (this.player.getPlayerDirection() - this.player.getPlayerFieldOfView() / 2.0f)
-                    + ((float) x / (float) screenWidth) * this.player.getPlayerFieldOfView();
+                (this.player.getAngleOfRotation() - this.player.getFieldOfView() / 2.0f)
+                    + ((float) x / (float) screenWidth) * this.player.getFieldOfView();
             Color color = null;
             double step = 0.01;
             double distance = 0.0;
@@ -129,8 +131,8 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
             boolean hit = false;
             while (!hit) {
                 distance += step;
-                int nTestX = (int) (this.player.getPlayerX() + fEyeX * distance);
-                int nTestY = (int) (this.player.getPlayerY() + fEyeY * distance);
+                int nTestX = (int) (this.player.getPositionX() + fEyeX * distance);
+                int nTestY = (int) (this.player.getPositionY() + fEyeY * distance);
                 if (nTestX < 0 || nTestX >= 15 || nTestY < 0 || nTestY >= 15) {
                     hit = true;
                     distance = 50;
@@ -143,7 +145,8 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
             }
 
             int lineHeight = Optional.of(distance)
-                .filter(var -> var > 0).map(var -> Math.abs((int) (screenHeight / var))).orElse(screenHeight);
+                .filter(var -> var > 0).map(var -> Math.abs((int) (screenHeight / var)))
+                .filter(var -> var <= screenHeight).orElse(screenHeight);
 
             int drawStart = Optional.of(((-lineHeight / 2) + (screenHeight / 2)))
                 .filter(var -> var > 0).orElse(0);
@@ -151,7 +154,6 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
                 .filter(var -> var <= screenHeight).orElse(screenHeight - 1);
 
             for (int y = drawStart; y < drawEnd; y++) pixels[x + y * screenWidth] = color.getRGB();
-
         }
     }
 
@@ -208,9 +210,9 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
         final int oldMouseX = this.mouseX;
         this.mouseX = mouseEvent.getX();
         if (oldMouseX > mouseX)
-            this.player.setPlayerDirection(this.player.getPlayerDirection() - 0.05 * this.player.getPlayerDirectionSpeed());
+            this.player.setAngleOfRotation(this.player.getAngleOfRotation() - 0.05 * this.player.getAngleOfRotationSpeed());
         else
-            this.player.setPlayerDirection(this.player.getPlayerDirection() + 0.05 * this.player.getPlayerDirectionSpeed());
+            this.player.setAngleOfRotation(this.player.getAngleOfRotation() + 0.05 * this.player.getAngleOfRotationSpeed());
     }
 
     @Override
@@ -229,14 +231,14 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
 
     @Data
     @Builder
-    public static class Player {
-        private double playerX;
-        private double playerY;
-        private double playerMovementSpeed;
+    public static class Camera {
+        private double positionX;
+        private double positionY;
+        private double movementSpeed;
 
-        private double playerDirection;
-        private double playerDirectionSpeed;
-        private double playerFieldOfView;
+        private double angleOfRotation;
+        private double angleOfRotationSpeed;
+        private double fieldOfView;
 
         private boolean playerForward;
         private boolean playerBack;
