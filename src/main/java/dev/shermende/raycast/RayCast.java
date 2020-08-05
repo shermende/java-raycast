@@ -33,11 +33,11 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
 
     protected static final int[][] MAP =
         {
-            {1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2},
-            {1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 2},
-            {1, 0, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 2},
-            {1, 0, 3, 0, 0, 0, 3, 0, 2, 0, 0, 0, 0, 0, 2},
-            {1, 0, 3, 0, 0, 0, 3, 0, 2, 2, 2, 0, 2, 2, 2},
+            {1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2},// → x
+            {1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 2},// ↓ y
+            {1, 0, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 2},// → 0˚ 0
+            {1, 0, 3, 0, 0, 0, 3, 0, 2, 0, 0, 0, 0, 0, 2},// ↓ 90˚ PI/2
+            {1, 0, 3, 0, 0, 0, 3, 0, 2, 2, 2, 0, 2, 2, 2},// ← 180˚ PI
             {1, 0, 3, 0, 0, 0, 3, 0, 2, 0, 0, 0, 0, 0, 2},
             {1, 0, 3, 3, 0, 3, 3, 0, 2, 0, 0, 0, 0, 0, 2},
             {1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 2},
@@ -60,7 +60,7 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
         setVisible(true);
         setSize(screenWidth, screenHeight);
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        //
+
         addKeyListener(this);
         addMouseMotionListener(this);
 
@@ -78,7 +78,7 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
             .build();
 
         long lastTime = System.nanoTime();
-        final double ns = 1000000000.0 / 60;//60 times per second
+        final double ns = 1000000000.0 / 60; // 60 times per second
         double delta = 0;
         while (true) {
             long now = System.nanoTime();
@@ -105,11 +105,27 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
             }
         }
         if (this.camera.isPlayerBack()) {
-            double nextX = Math.cos(this.camera.getAngleOfRotation()) * this.camera.getMovementSpeed();
-            double nextY = Math.sin(this.camera.getAngleOfRotation()) * this.camera.getMovementSpeed();
-            if (MAP[(int) (this.camera.getPositionY() - nextY)][(int) (this.camera.getPositionX() - nextX)] == 0) {
-                this.camera.setPositionX(this.camera.getPositionX() - nextX);
-                this.camera.setPositionY(this.camera.getPositionY() - nextY);
+            double nextX = Math.cos(this.camera.getAngleOfRotation() - Math.PI) * this.camera.getMovementSpeed();
+            double nextY = Math.sin(this.camera.getAngleOfRotation() - Math.PI) * this.camera.getMovementSpeed();
+            if (MAP[(int) (this.camera.getPositionY() + nextY)][(int) (this.camera.getPositionX() + nextX)] == 0) {
+                this.camera.setPositionX(this.camera.getPositionX() + nextX);
+                this.camera.setPositionY(this.camera.getPositionY() + nextY);
+            }
+        }
+        if (this.camera.isPlayerLeft()) {
+            double nextX = Math.cos(this.camera.getAngleOfRotation() - Math.PI / 2) * this.camera.getMovementSpeed();
+            double nextY = Math.sin(this.camera.getAngleOfRotation() - Math.PI / 2) * this.camera.getMovementSpeed();
+            if (MAP[(int) (this.camera.getPositionY() + nextY)][(int) (this.camera.getPositionX() + nextX)] == 0) {
+                this.camera.setPositionX(this.camera.getPositionX() + nextX);
+                this.camera.setPositionY(this.camera.getPositionY() + nextY);
+            }
+        }
+        if (this.camera.isPlayerRight()) {
+            double nextX = Math.cos(this.camera.getAngleOfRotation() + Math.PI / 2) * this.camera.getMovementSpeed();
+            double nextY = Math.sin(this.camera.getAngleOfRotation() + Math.PI / 2) * this.camera.getMovementSpeed();
+            if (MAP[(int) (this.camera.getPositionY() + nextY)][(int) (this.camera.getPositionX() + nextX)] == 0) {
+                this.camera.setPositionX(this.camera.getPositionX() + nextX);
+                this.camera.setPositionY(this.camera.getPositionY() + nextY);
             }
         }
     }
@@ -202,6 +218,8 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
     ) {
         if ((keyEvent.getKeyCode() == KeyEvent.VK_W)) this.camera.setPlayerForward(true);
         if ((keyEvent.getKeyCode() == KeyEvent.VK_S)) this.camera.setPlayerBack(true);
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_A)) this.camera.setPlayerLeft(true);
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_D)) this.camera.setPlayerRight(true);
     }
 
     @Override
@@ -210,6 +228,8 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
     ) {
         if ((keyEvent.getKeyCode() == KeyEvent.VK_W)) this.camera.setPlayerForward(false);
         if ((keyEvent.getKeyCode() == KeyEvent.VK_S)) this.camera.setPlayerBack(false);
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_A)) this.camera.setPlayerLeft(false);
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_D)) this.camera.setPlayerRight(false);
     }
 
     @Override
