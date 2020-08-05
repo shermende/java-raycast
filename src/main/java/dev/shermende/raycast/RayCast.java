@@ -50,7 +50,6 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
             {1, 1, 1, 1, 1, 1, 1, 4, 4, 4, 4, 4, 4, 4, 4}
         };
 
-
     public RayCast(
         int screenWidth,
         int screenHeight
@@ -73,7 +72,7 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
             .positionY(3.5)
             .movementSpeed(0.05)
             .angleOfRotation(Math.PI / 2)
-            .angleOfRotationSpeed(0.04)
+            .angleOfRotationSpeed(0.02)
             .fieldOfView(Math.PI / 4)
             .build();
 
@@ -140,7 +139,7 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
     private void frameRender() {
         for (int x = 0; x < screenWidth; x++) {
             double fRayAngle =
-                (this.camera.getAngleOfRotation() - this.camera.getFieldOfView() / 2.0f)
+                (this.camera.getAngleOfRotation() - this.camera.getFieldOfView() / 2.0f) // minus half of FOV from angle of rotation
                     + ((float) x / (float) screenWidth) * this.camera.getFieldOfView();
             Color color = null;
             double step = 0.01;
@@ -175,7 +174,6 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
             for (int y = drawStart; y < drawEnd; y++) pixels[x + y * screenWidth] = color.getRGB();
         }
     }
-
 
     public Color color(int x) {
         if (x == 4) return new Color(150, 0, 0);
