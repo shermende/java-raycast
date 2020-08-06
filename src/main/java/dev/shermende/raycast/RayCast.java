@@ -25,11 +25,12 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
     private final int screenWidth;
     private final int screenHeight;
 
-    private final int[] pixels;
-    private final transient BufferedImage image;
     private final transient Camera camera;
+    private final transient BufferedImage image;
+    private final int[] pixels;
 
     private int mouseX;
+    private boolean running = true;
 
     protected static final int[][] MAP =
         {
@@ -79,7 +80,7 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
         long lastTime = System.nanoTime();
         final double ns = 1000000000.0 / 60; // 60 times per second
         double delta = 0;
-        while (true) {
+        while (running) {
             long now = System.nanoTime();
             delta = delta + ((now - lastTime) / ns);
             lastTime = now;
@@ -91,7 +92,6 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
             }
             render();
         }
-
     }
 
     private void movement() {
