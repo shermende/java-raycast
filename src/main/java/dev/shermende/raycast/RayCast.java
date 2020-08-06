@@ -29,7 +29,11 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
     private final transient BufferedImage image;
     private final int[] pixels;
 
-    private int mouseX;
+    private boolean forward;
+    private boolean back;
+    private boolean left;
+    private boolean right;
+    private int mouse;
     private boolean running = true;
 
     protected static final int[][] MAP =
@@ -45,7 +49,7 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
             {1, 1, 1, 1, 1, 1, 1, 1, 4, 4, 4, 0, 4, 4, 4},
             {1, 0, 0, 0, 0, 0, 1, 4, 0, 0, 0, 0, 0, 0, 4},
             {1, 0, 0, 0, 0, 0, 1, 4, 0, 0, 0, 0, 0, 0, 4},
-            {1, 0, 0, 0, 0, 0, 1, 4, 0, 3, 3, 3, 3, 0, 4},
+            {1, 0, 4, 0, 0, 0, 1, 4, 0, 3, 3, 3, 3, 0, 4},
             {1, 0, 0, 0, 0, 0, 1, 4, 0, 3, 3, 3, 3, 0, 4},
             {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4},
             {1, 1, 1, 1, 1, 1, 1, 4, 4, 4, 4, 4, 4, 4, 4}
@@ -69,8 +73,8 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
         this.image = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_RGB);
         this.pixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
         this.camera = Camera.builder()
+            .positionY(3)
             .positionX(4.5)
-            .positionY(3.5)
             .movementSpeed(0.05)
             .angleOfRotation(Math.PI / 2)
             .angleOfRotationSpeed(0.02)
@@ -95,37 +99,21 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
     }
 
     private void movement() {
-        if (this.camera.isPlayerForward()) {
-            double nextX = Math.cos(this.camera.getAngleOfRotation()) * this.camera.getMovementSpeed();
-            double nextY = Math.sin(this.camera.getAngleOfRotation()) * this.camera.getMovementSpeed();
-            if (MAP[(int) (this.camera.getPositionY() + nextY)][(int) (this.camera.getPositionX() + nextX)] == 0) {
-                this.camera.setPositionX(this.camera.getPositionX() + nextX);
-                this.camera.setPositionY(this.camera.getPositionY() + nextY);
-            }
+        if (this.forward) {
+            camera.forward();
+            if (MAP[(int) (camera.getPositionY())][(int) (this.camera.getPositionX())] != 0) camera.back();
         }
-        if (this.camera.isPlayerBack()) {
-            double nextX = Math.cos(this.camera.getAngleOfRotation() - Math.PI) * this.camera.getMovementSpeed();
-            double nextY = Math.sin(this.camera.getAngleOfRotation() - Math.PI) * this.camera.getMovementSpeed();
-            if (MAP[(int) (this.camera.getPositionY() + nextY)][(int) (this.camera.getPositionX() + nextX)] == 0) {
-                this.camera.setPositionX(this.camera.getPositionX() + nextX);
-                this.camera.setPositionY(this.camera.getPositionY() + nextY);
-            }
+        if (this.back) {
+            camera.back();
+            if (MAP[(int) (camera.getPositionY())][(int) (this.camera.getPositionX())] != 0) camera.forward();
         }
-        if (this.camera.isPlayerLeft()) {
-            double nextX = Math.cos(this.camera.getAngleOfRotation() - Math.PI / 2) * this.camera.getMovementSpeed();
-            double nextY = Math.sin(this.camera.getAngleOfRotation() - Math.PI / 2) * this.camera.getMovementSpeed();
-            if (MAP[(int) (this.camera.getPositionY() + nextY)][(int) (this.camera.getPositionX() + nextX)] == 0) {
-                this.camera.setPositionX(this.camera.getPositionX() + nextX);
-                this.camera.setPositionY(this.camera.getPositionY() + nextY);
-            }
+        if (this.left) {
+            camera.left();
+            if (MAP[(int) (this.camera.getPositionY())][(int) (this.camera.getPositionX())] != 0) camera.right();
         }
-        if (this.camera.isPlayerRight()) {
-            double nextX = Math.cos(this.camera.getAngleOfRotation() + Math.PI / 2) * this.camera.getMovementSpeed();
-            double nextY = Math.sin(this.camera.getAngleOfRotation() + Math.PI / 2) * this.camera.getMovementSpeed();
-            if (MAP[(int) (this.camera.getPositionY() + nextY)][(int) (this.camera.getPositionX() + nextX)] == 0) {
-                this.camera.setPositionX(this.camera.getPositionX() + nextX);
-                this.camera.setPositionY(this.camera.getPositionY() + nextY);
-            }
+        if (this.right) {
+            camera.right();
+            if (MAP[(int) (this.camera.getPositionY())][(int) (this.camera.getPositionX())] != 0) camera.left();
         }
     }
 
@@ -214,32 +202,30 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
     public void keyPressed(
         KeyEvent keyEvent
     ) {
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_W)) this.camera.setPlayerForward(true);
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_S)) this.camera.setPlayerBack(true);
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_A)) this.camera.setPlayerLeft(true);
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_D)) this.camera.setPlayerRight(true);
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_W)) this.forward = true;
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_S)) this.back = true;
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_A)) this.left = true;
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_D)) this.right = true;
     }
 
     @Override
     public void keyReleased(
         KeyEvent keyEvent
     ) {
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_W)) this.camera.setPlayerForward(false);
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_S)) this.camera.setPlayerBack(false);
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_A)) this.camera.setPlayerLeft(false);
-        if ((keyEvent.getKeyCode() == KeyEvent.VK_D)) this.camera.setPlayerRight(false);
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_W)) this.forward = false;
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_S)) this.back = false;
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_A)) this.left = false;
+        if ((keyEvent.getKeyCode() == KeyEvent.VK_D)) this.right = false;
     }
 
     @Override
     public void mouseMoved(
         MouseEvent mouseEvent
     ) {
-        final int oldMouseX = this.mouseX;
-        this.mouseX = mouseEvent.getX();
-        if (oldMouseX > mouseX)
-            this.camera.setAngleOfRotation(this.camera.getAngleOfRotation() - this.camera.getAngleOfRotationSpeed());
-        else
-            this.camera.setAngleOfRotation(this.camera.getAngleOfRotation() + this.camera.getAngleOfRotationSpeed());
+        final int oldMouse = this.mouse;
+        this.mouse = mouseEvent.getX();
+        if (oldMouse > mouse) camera.rotateLeft();
+        else camera.rotateRight();
     }
 
     @Override
@@ -267,10 +253,45 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
         private double angleOfRotationSpeed;
         private double fieldOfView;
 
-        private boolean playerForward;
-        private boolean playerBack;
-        private boolean playerLeft;
-        private boolean playerRight;
+        public void move(
+            double nextY,
+            double nextX
+        ) {
+            setPositionY(getPositionY() + nextY);
+            setPositionX(getPositionX() + nextX);
+        }
+
+        public void forward() {
+            double nextX = Math.cos(getAngleOfRotation()) * getMovementSpeed();
+            double nextY = Math.sin(getAngleOfRotation()) * getMovementSpeed();
+            move(nextY, nextX);
+        }
+
+        public void back() {
+            double nextX = Math.cos(getAngleOfRotation() - Math.PI) * getMovementSpeed();
+            double nextY = Math.sin(getAngleOfRotation() - Math.PI) * getMovementSpeed();
+            move(nextY, nextX);
+        }
+
+        public void left() {
+            double nextX = Math.cos(getAngleOfRotation() - Math.PI / 2) * getMovementSpeed();
+            double nextY = Math.sin(getAngleOfRotation() - Math.PI / 2) * getMovementSpeed();
+            move(nextY, nextX);
+        }
+
+        public void right() {
+            double nextX = Math.cos(getAngleOfRotation() + Math.PI / 2) * getMovementSpeed();
+            double nextY = Math.sin(getAngleOfRotation() + Math.PI / 2) * getMovementSpeed();
+            move(nextY, nextX);
+        }
+
+        public void rotateLeft() {
+            setAngleOfRotation(getAngleOfRotation() - getAngleOfRotationSpeed());
+        }
+
+        public void rotateRight() {
+            setAngleOfRotation(getAngleOfRotation() + getAngleOfRotationSpeed());
+        }
     }
 
     public static void main(
