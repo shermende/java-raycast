@@ -171,11 +171,15 @@ public class RayCast extends JFrame implements KeyListener, MouseMotionListener 
     }
 
     public Color shadeColor(Color color, double distance) {
-        if (distance <= 1) return darken(color, 0.1);
-        if (distance <= 2) return darken(color, 0.15);
-        if (distance <= 3) return darken(color, 0.2);
-        if (distance <= 4) return darken(color, 0.25);
-        return darken(color, 0.3);
+        if (distance <= 1) return darken(color, getFraction(distance));
+        if (distance <= 2) return darken(color, getFraction(distance));
+        if (distance <= 3) return darken(color, getFraction(distance));
+        if (distance <= 4) return darken(color, getFraction(distance));
+        return darken(color, getFraction(distance));
+    }
+
+    private double getFraction(double distance) {
+        return distance / 16;
     }
 
     public Color darken(Color color, double fraction) {
